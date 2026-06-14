@@ -554,33 +554,40 @@ metadata.  HEADERS are optional HTTP headers.  If FORCE is non-nil do
 not use cached content."
   (unless elfeed-use-curl
     (error "`elfeed-show-fetch-link' requires curl"))
-  (setq url (or url
-                (when-let* ((entry elfeed-show-entry))
-                  (elfeed-entry-link entry))
-                (error "No link to fetch"))
-        key (or key :link-content))
-  (ignore-errors
-    (kill-process (alist-get key elfeed-show--fetch))
-    (setf (alist-get key elfeed-show--fetch nil t) nil))
-  (if-let* ((content (and (not force) (elfeed-deref (elfeed-meta elfeed-show-entry key)))))
-      (funcall cb url content)
-    (funcall cb url :fetching)
-    (setf (alist-get key elfeed-show--fetch)
+  (let* ((buffer (current-buffer))
+         (entry elfeed-show-entry)
+         (url (or url
+                  (and entry (elfeed-entry-link entry))
+                  (error "No link to fetch")))
+         (key (or key :link-content))
+         (proc-key (cons entry key)))
+    ;; Kill all fetching processes which do not belong to the current entry.
+    (cl-loop for proc in elfeed-show--fetch
+             if (eq (caar proc) entry) collect proc into active
+             else do (ignore-errors (kill-process (cdr proc)))
+             finally return (setq elfeed-show--fetch active))
+    ;; Content already available.
+    (if-let* ((content (and (not force) (elfeed-deref (elfeed-meta entry key)))))
+        (funcall cb url content)
+      ;; Do not restart fetching, if already running.
+      (unless (assoc proc-key elfeed-show--fetch)
+        (funcall cb url :fetching)
+        (push
+         (cons
+          proc-key
           (elfeed-curl-retrieve
            url
-           (let ((buffer (current-buffer))
-                 (entry elfeed-show-entry))
-             (lambda (success)
-               (setf (alist-get key elfeed-show--fetch nil t) nil)
-               (if (not success)
-                   (funcall cb url :error)
-                 (let ((content (buffer-string)))
-                   (setf (elfeed-meta entry key) (elfeed-ref content))
-                   (when (buffer-live-p buffer)
-                     (with-current-buffer buffer
-                       (when (eq entry elfeed-show-entry)
-                         (funcall cb url content))))))))
-           :headers headers))))
+           (lambda (success)
+             (cl-callf2 assoc-delete-all proc-key elfeed-show--fetch)
+             (let ((content (and success (buffer-string))))
+               (when content
+                 (setf (elfeed-meta entry key) (elfeed-ref content)))
+               (when (buffer-live-p buffer)
+                 (with-current-buffer buffer
+                   (when (eq entry elfeed-show-entry)
+                     (funcall cb url (or content :error)))))))
+           :headers headers))
+         elfeed-show--fetch)))))
 
 (defun elfeed-show-fetch-link (&optional force)
   "Fetch link content and insert it into the show buffer.
