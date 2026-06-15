@@ -98,6 +98,7 @@ FMT must be a string suitable for `format' given OBJECTS as arguments."
 ;;;###autoload
 (defun elfeed-log-show ()
   "Show log buffer."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (setq elfeed-log-error-count 0)
   (switch-to-buffer (elfeed-log-buffer)))

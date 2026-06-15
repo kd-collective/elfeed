@@ -423,6 +423,7 @@ The FEED-OR-ID may be a feed struct or a feed ID (url)."
   "Unload the database so that it can be operated on externally.
 
 Runs `elfeed-db-unload-hook' after unloading the database."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (elfeed-db-save)
   (dolist (buf (buffer-list))
@@ -746,6 +747,7 @@ Deduplicate objects, delete empty feeds and unreferenced content files."
   "Minimize the Elfeed database storage size on the filesystem.
 This requires that `auto-compression-mode' can handle
 gzip-compressed files, so the gzip program must be in your PATH."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (unless (elfeed-gzip-supported-p)
     (error "Aborting compaction: gzip auto-compression-mode unsupported"))

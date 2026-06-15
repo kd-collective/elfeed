@@ -130,6 +130,14 @@ Set to `most-positive-fixnum' to always use a relative time, or 0 to
 never show a relative time."
   :type 'boolean)
 
+;; Completion predicate for commands which should be available in all Elfeed
+;; mode buffers.
+;;;###autoload
+(progn
+  (defun elfeed--mode-p (_sym buf)
+    (let ((mode (buffer-local-value 'major-mode buf)))
+      (and (symbolp mode) (string-prefix-p "elfeed-" (symbol-name mode))))))
+
 ;; Fetching:
 
 (define-obsolete-variable-alias 'elfeed-http-error-hooks 'elfeed-http-error-hook "4.0.0")
@@ -225,6 +233,7 @@ list.  The second argument is the tag list.")
 (defun elfeed-unjam ()
   "Manually clear the connection pool when connections fail to timeout.
 This is a workaround for issues in `url-queue-retrieve'."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (setq elfeed-log-error-count 0)
   (elfeed-log 'info "Unjamming queue")
@@ -602,6 +611,7 @@ feeds without the :no-update property."
 
 (defun elfeed-apply-hooks-now ()
   "Apply `elfeed-new-entry-hook' to all entries in the database."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (elfeed-db-visit (entry)
     (run-hook-with-args 'elfeed-new-entry-hook entry))
@@ -609,6 +619,7 @@ feeds without the :no-update property."
 
 (defun elfeed-apply-autotags-now ()
   "Apply autotags to existing entries according to `elfeed-feeds'."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (elfeed-db-visit (entry feed)
     (apply #'elfeed-tag entry (elfeed-feed-autotags feed)))
@@ -645,6 +656,7 @@ feeds without the :no-update property."
 (defun elfeed-update-feed (url)
   "Update a specific feed identified by URL.
 Run `elfeed-update-init-hook' before."
+  (declare (completion elfeed--mode-p))
   (interactive (list (elfeed--prompt-feed)))
   (run-hooks 'elfeed-update-init-hook)
   (elfeed--update-feed url))
@@ -755,6 +767,7 @@ In order to modify feed content, you can use a custom fetch function.
   "Manually add a feed at URL to the database.
 If SAVE is non-nil the new value of ‘elfeed-feeds’ is saved.  When
 called interactively, SAVE is set to t."
+  (declare (completion elfeed--mode-p))
   (interactive
    (list
     (let* ((feeds (elfeed-candidate-feeds))
@@ -773,6 +786,7 @@ called interactively, SAVE is set to t."
 
 (defun elfeed-delete-feed (url)
   "Delete feed identified by URL from the database."
+  (declare (completion elfeed--mode-p))
   (interactive (list (elfeed--prompt-feed)))
   (let (entries)
     (elfeed-db-visit (entry feed)
@@ -791,6 +805,7 @@ called interactively, SAVE is set to t."
 ;;;###autoload
 (defun elfeed-update ()
   "Update all the feeds in `elfeed-feeds'."
+  (declare (completion elfeed--mode-p))
   (interactive)
   (if (> (elfeed-queue-count-total) 0)
       (user-error "Update already running")
@@ -883,11 +898,11 @@ The returned function should be added to `elfeed-new-entry-hook'."
            when (assoc 'xmlUrl attr) collect (cdr it)
            else append (elfeed--parse-opml content)))
 
-;;;###autoload
 (defun elfeed-load-opml (file)
   "Load feeds from FILE in OPML format into `elfeed-feeds'.
 When called interactively, the changes to `elfeed-feeds' are
 saved to your customization file."
+  (declare (completion elfeed--mode-p))
   (interactive "fOPML file: ")
   (let* ((xml (elfeed-xml-parse-file file))
          (feeds (elfeed--parse-opml xml))
@@ -897,9 +912,9 @@ saved to your customization file."
         (customize-save-variable 'elfeed-feeds elfeed-feeds)
         (elfeed-log 'notice "%d feeds loaded from %s" (length feeds) file)))))
 
-;;;###autoload
 (defun elfeed-export-opml (file)
   "Export the current feed listing to OPML-formatted FILE."
+  (declare (completion elfeed--mode-p))
   (interactive "FOutput OPML file: ")
   (with-temp-file file
     (let ((standard-output (current-buffer)))
