@@ -1440,9 +1440,9 @@ Positive N moves forward, negative N backward."
                                  thereis
                                  (eq (overlay-get ov 'category)
                                      'elfeed-search-separator)))))
-  (when (eobp)
-    (forward-line -1))
-  (recenter))
+  (if (eobp)
+      (forward-line -1)
+    (set-window-start nil (pos-bol))))
 
 (defun elfeed-search-previous-separator (&optional n)
   "Move cursor to the previous Nth separator.
