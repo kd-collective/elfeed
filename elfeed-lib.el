@@ -425,7 +425,7 @@ Links are relative to BASE-URL if non-nil."
                 (lambda (url cb &rest args)
                   (let ((cb (if (eq cb #'shr-image-fetched)
                                 (lambda (status buffer start end &rest args)
-                                  (when (and start end (> end start))
+                                  (when (and (buffer-live-p buffer) start end (> end start))
                                     (apply #'shr-image-fetched status buffer start end args)))
                               cb)))
                     (apply orig url cb args)))))
